@@ -13,8 +13,8 @@ import com.c2v4.waiter.screen.GameScene
 import javafx.scene.Scene
 
 class Player {
-    val startingX=16
-    val startingY=2
+    val startingX = 16
+    val startingY = 2
     val SPEED = 2f
     val sprite = Sprite(Texture("entities/player.png"))
     val body: Body
@@ -46,21 +46,29 @@ class Player {
                     if (currentItem < 0) currentItem = inventory.size - 1
                 }),
                 Mover(Input.Keys.UP, {
-                    gameScene.shopPointer--
-                    if (gameScene.shopPointer < 0) gameScene.shopPointer = Items.values().size - 1
+                    if (gameScene.showShop) {
+                        gameScene.shopPointer--
+                        if (gameScene.shopPointer < 0) gameScene.shopPointer = Items.values().size - 1
+                    }
                 }),
                 Mover(Input.Keys.DOWN, {
-                    gameScene.shopPointer = (gameScene.shopPointer + 1) % Items.values().size
+                    if (gameScene.showShop) {
+                        gameScene.shopPointer = (gameScene.shopPointer + 1) % Items.values().size
+                    }
                 }),
                 Mover(Input.Keys.RIGHT, {
-                    val item = Items.values()[gameScene.shopPointer]
-                    addItem(item,1)
+                    if (gameScene.showShop) {
+                        val item = Items.values()[gameScene.shopPointer]
+                        addItem(item, 1)
+                    }
                 }),
                 Mover(Input.Keys.LEFT, {
-                    val item = Items.values()[gameScene.shopPointer]
-                    val itemInInventory = inventory.filter { it.type == item }.firstOrNull()
-                    if(itemInInventory!=null){
-                        removeItemFromInventory(itemInInventory)
+                    if (gameScene.showShop) {
+                        val item = Items.values()[gameScene.shopPointer]
+                        val itemInInventory = inventory.filter { it.type == item }.firstOrNull()
+                        if (itemInInventory != null) {
+                            removeItemFromInventory(itemInInventory)
+                        }
                     }
                 }),
                 Mover(Input.Keys.I, { showInventory = !showInventory }),
@@ -97,7 +105,7 @@ class Player {
         val fixtureDef = FixtureDef()
         val circleShape = CircleShape()
         circleShape.radius = 15f / PPM
-        circleShape.position = Vector2(startingX*32/PPM +16f / PPM,startingY*32/PPM + 48f / PPM)
+        circleShape.position = Vector2(startingX * 32 / PPM + 16f / PPM, startingY * 32 / PPM + 48f / PPM)
         fixtureDef.shape = circleShape
         fixtureDef.density = 1f
         val bodyDef = BodyDef()
@@ -116,8 +124,8 @@ class Player {
         instantListeners.filter {
             Gdx.input.isKeyJustPressed(it.keyCode)
         }.forEach { it.action() }
-        sprite.x = body.position.x * PPM +32*startingX
-        sprite.y = body.position.y * PPM +32*startingY+32
+        sprite.x = body.position.x * PPM + 32 * startingX
+        sprite.y = body.position.y * PPM + 32 * startingY + 32
     }
 
     fun getActionPoint(): Point2D {
@@ -160,5 +168,5 @@ enum class Items(val action: (GameScene) -> Boolean, val texture: Texture) {
     MARY2({ false }, maryTexture),
     MARY3({ false }, maryTexture),
     MARY4({ false }, maryTexture),
-    PICKAXE({ scene -> scene.mine(scene.player)}, pickaxeTexture)
+    PICKAXE({ scene -> scene.mine(scene.player) }, pickaxeTexture)
 }
