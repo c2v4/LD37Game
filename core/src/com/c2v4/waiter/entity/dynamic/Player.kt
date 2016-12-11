@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.Sprite
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.physics.box2d.*
+import com.c2v4.waiter.entity.dynamic.Items.*
 import com.c2v4.waiter.helper.*
 import com.c2v4.waiter.helper.Direction.*
 import com.c2v4.waiter.screen.GameScene
@@ -31,9 +32,9 @@ class Player {
         this.gameScene = gameScene
         body = createBody(world)
         inventory = mutableListOf(
-                Item(5, Items.MARY_SEED),
-                Item(20, Items.WATERING_CAN),
-                Item(5, Items.HARVESTER)
+                Item(5, MARY_SEED),
+                Item(20, WATERING_CAN),
+                Item(5, HARVESTER)
         )
         instantListeners = arrayOf(
                 Mover(Input.Keys.RIGHT_BRACKET, {
@@ -90,7 +91,14 @@ class Player {
                 Mover(Input.Keys.UP, { body.applyForceToCenter(Vector2(0f, SPEED), true);direction = UP }),
                 Mover(Input.Keys.DOWN, { body.applyForceToCenter(Vector2(0f, -SPEED), true);direction = DOWN }),
                 Mover(Input.Keys.RIGHT, { body.applyForceToCenter(Vector2(SPEED, 0f), true);direction = RIGHT }),
-                Mover(Input.Keys.LEFT, { body.applyForceToCenter(Vector2(-SPEED, 0f), true);direction = LEFT })
+                Mover(Input.Keys.LEFT, { body.applyForceToCenter(Vector2(-SPEED, 0f), true);direction = LEFT }),
+                Mover(Input.Keys.Z, {
+                    val item = inventory[currentItem]
+                    if(arrayOf(MARY_SEED,HARVESTER).contains(item.type))
+                    if (item.type.action(gameScene)) {
+                        removeItemFromInventory(item)
+                    }
+                })
         )
 
 
