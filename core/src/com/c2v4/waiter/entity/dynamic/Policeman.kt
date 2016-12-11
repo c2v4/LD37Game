@@ -53,9 +53,9 @@ class Policeman {
         body.setLinearVelocity(0f, 0f)
         x = body.position.x * PPM + 32 * startingX
         y = body.position.y * PPM + 32 * startingY + 32
+        moved = false
         aStar = aStar()
         move()
-        moved = false
         baseAnimation.animationDuration
         if (moved) {
             baseAnimationCounter += delta

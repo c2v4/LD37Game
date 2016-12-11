@@ -300,7 +300,7 @@ class GameScene : Screen {
             background.setCell(actionPoint.x, actionPoint.y, cell)
 
             world.destroyBody(bodies[actionPoint])
-
+            bodies.remove(actionPoint)
             val wallCell = TiledMapTileLayer.Cell()
             wallCell.tile = map.tileSets.getTile(12)
 
@@ -329,6 +329,7 @@ class GameScene : Screen {
             }
             groundLayer.setCell(actionPoint.x, actionPoint.y, null)
             world.destroyBody(bodies[actionPoint])
+            bodies.remove(actionPoint)
             grounds.remove(actionPoint)
             player.addItem(Items.SOIL, 1)
             return false//shall use durability on ground
@@ -341,6 +342,7 @@ class GameScene : Screen {
                 .filter { it.name != "background" }
                 .all { it is TiledMapTileLayer && it.getCell(actionPoint.x, actionPoint.y) == null }
         empty = empty and lamps.keys.none { it == actionPoint }
+        empty = empty and police.none { it.aStar.contains(actionPoint) }
         if (empty) {
             initializeGround(actionPoint.x, actionPoint.y)
             val groundLayer = map.layers["ground"] as TiledMapTileLayer
