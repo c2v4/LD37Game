@@ -5,7 +5,6 @@ import com.badlogic.gdx.Screen
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL30
 import com.badlogic.gdx.graphics.OrthographicCamera
-import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.Sprite
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
@@ -19,16 +18,15 @@ import com.badlogic.gdx.maps.tiled.TmxMapLoader
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.physics.box2d.*
-import com.badlogic.gdx.utils.Align
 import com.c2v4.waiter.entity.dynamic.Item
 import com.c2v4.waiter.entity.dynamic.Items
+import com.c2v4.waiter.entity.dynamic.Policeman
 import com.c2v4.waiter.entity.static.Ground
 import com.c2v4.waiter.entity.static.plant.Mary
 import com.c2v4.waiter.helper.*
+import com.sun.org.apache.xpath.internal.operations.Bool
 import java.lang.Math.abs
 import java.lang.Math.round
-import java.time.Year
-import java.time.temporal.Temporal
 import java.util.*
 
 
@@ -51,6 +49,7 @@ class GameScene : Screen {
     val grounds = mutableMapOf<Point2D, Ground>()
     val bodies = mutableMapOf<Point2D, Body>()
     val lamps = mutableMapOf<Point2D, Sprite>()
+    val police = mutableListOf<Policeman>()
     private val random = Random()
 
     constructor() {
@@ -58,6 +57,7 @@ class GameScene : Screen {
         player = Player(world, this)
         camera.translate(Gdx.graphics.width / 2 / PPM, Gdx.graphics.height / 2 / PPM)
         initializeMap()
+        police.add(Policeman(world, this))
     }
 
     private fun initializeMap() {
@@ -86,7 +86,6 @@ class GameScene : Screen {
                                 }
                             }
                 }
-
     }
 
     private fun placeLampAt(point2D: Point2D) {
@@ -112,7 +111,7 @@ class GameScene : Screen {
         bodyDef.position.y = 32 / PPM * y + 16 / PPM
         val createdBody = world.createBody(bodyDef)
         createdBody.createFixture(fixtureDef)
-//        bodies.put(Point2D(x, y), createdBody)
+        bodies.put(Point2D(x, y), createdBody)
     }
 
     override fun show() {
@@ -129,11 +128,16 @@ class GameScene : Screen {
         batch.begin()
         renderLamps()
         player.draw(batch)
+        renderPolice()
         renderPlants()
         renderInventory()
         renderShop()
         batch.end()
 //        debugRenderer.render(world, camera.combined.cpy())
+    }
+
+    private fun renderPolice() {
+        police.forEach { it.draw(batch) }
     }
 
     private fun renderLamps() {
@@ -183,7 +187,14 @@ class GameScene : Screen {
 
             shapeRenderer.begin(ShapeRenderer.ShapeType.Line)
             shapeRenderer.color = Color.CYAN
-            shapeRenderer.rect(454f, 440f, selectedWidth + 30f, 70f)
+            val widthWithSomething: Float
+            if ((selectedWidth + 24f) < 76f) {
+                widthWithSomething = 76f
+            }
+            else {
+                widthWithSomething = selectedWidth + 24f
+            }
+            shapeRenderer.rect(454f, 440f, widthWithSomething, 70f)
             shapeRenderer.end()
 
         }
@@ -218,6 +229,7 @@ class GameScene : Screen {
     private fun update(delta: Float) {
         world.step(1f / 30, 6, 2)
         player.update(delta)
+        police.forEach { it.update(delta) }
         grounds.values.filter { it.plant != null }.forEach {
             it.grow(getGrowValue(Point2D(it.x, it.y)))
         }
@@ -246,7 +258,7 @@ class GameScene : Screen {
     }
 
     fun plant(player: Player): Boolean {
-        val ground = grounds.get(player.getActionPoint())
+        val ground = grounds[player.getActionPoint()]
         if (ground != null && ground.plant == null) {
             ground.plant = Mary()
             return true
@@ -321,7 +333,6 @@ class GameScene : Screen {
             player.addItem(Items.SOIL, 1)
             return false//shall use durability on ground
         }
-        return false
     }
 
     fun placeGround(player: Player): Boolean {
@@ -351,6 +362,14 @@ class GameScene : Screen {
         if (empty) {
             placeLampAt(Point2D(actionPoint.x, actionPoint.y))
             return true
+        }
+        return false
+    }
+
+    fun shoot(player: Player): Boolean {
+        val bullet = player.inventory.filter { it.type == Items.BULLET }.firstOrNull()
+        if (bullet != null && bullet.quantity > 0) {
+
         }
         return false
     }

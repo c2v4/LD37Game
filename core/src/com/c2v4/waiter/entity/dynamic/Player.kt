@@ -21,7 +21,6 @@ class Player {
     val startingX = 16
     val startingY = 2
     val SPEED = 0.25f
-    val sprite = Sprite(Texture("entities/player.png"))
     val body: Body
     val gameScene: GameScene
     var direction: Direction = LEFT
@@ -34,6 +33,7 @@ class Player {
     var moved = false
     val baseAnimation: Animation
     var baseAnimationCounter = 0f
+    val top:TextureRegion
     var x = 0f
     var y = 0f
 //    val maxInventoryItems = 10
@@ -43,7 +43,7 @@ class Player {
     constructor(world: World, gameScene: GameScene) {
         this.gameScene = gameScene
         baseAnimation = Animation(baseFrameLength, getBaseFrames())
-
+        top = TextureRegion.split(playerTopTexture,32,32)[0][0]
         body = createBody(world)
         inventory = mutableListOf(
                 Item(5, MARY_SEED),
@@ -116,14 +116,6 @@ class Player {
         )
     }
 
-    private fun getBaseFrames(): com.badlogic.gdx.utils.Array<out TextureRegion>? {
-        val array = com.badlogic.gdx.utils.Array<TextureRegion>(30)
-        val arrayOfTextureRegions = TextureRegion.split(playerBaseTexture, 32, 32).get(0)
-        arrayOfTextureRegions.forEach { textureRegion -> array.add(textureRegion) }
-        return array
-    }
-
-
     private fun removeItemFromInventory(item: Item) {
         item.quantity--
         if (item.quantity < 1) {
@@ -172,8 +164,8 @@ class Player {
     }
 
     fun getActionPoint(): Point2D {
-        var x = Math.round(sprite.x / 32)
-        var y = Math.round(sprite.y / 32)
+        var x = Math.round(x / 32)
+        var y = Math.round(y / 32)
         when (direction) {
             UP -> y++
             DOWN -> y--
@@ -205,7 +197,9 @@ class Player {
                 LEFT->rotate = 180f
             }
         }
+        val rotateTop = MathUtils.atan2(y+16-(Gdx.graphics.height-Gdx.input.y),x+16-Gdx.input.x)*MathUtils.radiansToDegrees
         batch.draw(baseAnimation.getKeyFrame(baseAnimationCounter), x, y, 16f, 16f, 32f, 32f, 1.5f, 1.5f, rotate, true)
+        batch.draw(top, x, y, 16f, 16f, 32f, 32f, 1.5f, 1.5f, rotateTop+180, true)
     }
 }
 
@@ -226,7 +220,9 @@ enum class Items(val action: (GameScene) -> Boolean, val texture: Texture, val p
     MARY({ false }, maryTexture, 9f),
     PICKAXE({ scene -> scene.mine(scene.player) }, pickaxeTexture, 14f),
     SOIL({ scene -> scene.placeGround(scene.player) }, soilTexture, 14f),
-    LAMP({ scene -> scene.placeLamp(scene.player) }, lampTexture, 14f);
+    LAMP({ scene -> scene.placeLamp(scene.player) }, lampTexture, 14f),
+    GUN({false }, gunTexture, 14f),
+    BULLET({scene -> scene.shoot(scene.player)}, bulletTexture, 14f);
 
     fun getSellPrice(): Float = Math.round(price * 0.9 * 100) / 100f
     fun getBuyPrice(): Float = Math.round(price * 1.2 * 100) / 100f
