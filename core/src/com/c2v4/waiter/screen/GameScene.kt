@@ -18,6 +18,7 @@ import com.badlogic.gdx.maps.tiled.TmxMapLoader
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.physics.box2d.*
+import com.badlogic.gdx.utils.Align
 import com.c2v4.waiter.entity.dynamic.Item
 import com.c2v4.waiter.entity.dynamic.Items
 import com.c2v4.waiter.entity.static.Ground
@@ -121,6 +122,7 @@ class GameScene : Screen {
         if (showShop) {
             val items = Items.values()
             var selectedWidth = 104f
+            font.draw(batch, String.format("%1$.2f", player.money), 960f, 744f)
             (shopPointer - 2..shopPointer + 2).map {
                 if (it < 0) {
                     items.size + it
@@ -137,20 +139,26 @@ class GameScene : Screen {
                 sprite.y = 600f - i * 70
                 sprite.setScale(2f)
                 sprite.draw(batch)
-
+                font.color = Color.ROYAL
                 font.draw(batch, "${player.inventory
                         .filter { iterator -> iterator.type == items[it] }
                         .map(Item::quantity)
-                        .firstOrNull() ?: 0}", sprite.x, sprite.y + 20)
-                val draw = font.draw(batch, items[it].name.replace('_',' '), sprite.x, sprite.y)
-                if(i==2){
-                    selectedWidth= draw.width
+                        .firstOrNull() ?: 0}", sprite.x - 20, sprite.y + 20)
+                font.color = Color.LIME
+                font.draw(batch, "${items[it].getBuyPrice()}", sprite.x - 20, sprite.y + 40)
+                font.color = Color.SCARLET
+                font.draw(batch, "${items[it].getSellPrice()}", sprite.x + 20, sprite.y + 40)
+
+                font.color = Color.WHITE
+                val draw = font.draw(batch, items[it].name.replace('_', ' '), sprite.x - 20, sprite.y)
+                if (i == 2) {
+                    selectedWidth = draw.width
                 }
             }
 
             shapeRenderer.begin(ShapeRenderer.ShapeType.Line)
             shapeRenderer.color = Color.CYAN
-            shapeRenderer.rect(460f,440f,selectedWidth+26f,70f)
+            shapeRenderer.rect(454f, 440f, selectedWidth + 30f, 70f)
             shapeRenderer.end()
 
         }
@@ -171,11 +179,13 @@ class GameScene : Screen {
                 sprite.draw(batch)
                 font.draw(batch, "${item.quantity}", sprite.x, sprite.y)
             }
-            val selector = Sprite(selectorTexture)
-            selector.setScale(2f)
-            selector.x = 32f + 70 * player.currentItem
-            selector.y = 32f
-            selector.draw(batch)
+            if (!player.inventory.isEmpty()) {
+                val selector = Sprite(selectorTexture)
+                selector.setScale(2f)
+                selector.x = 32f + 70 * player.currentItem
+                selector.y = 32f
+                selector.draw(batch)
+            }
         }
     }
 
@@ -265,6 +275,31 @@ class GameScene : Screen {
                     }
                 }
             }
+            return true
+        } else {
+            val groundLayer = map.layers.get("ground") as TiledMapTileLayer
+            if (groundLayer.getCell(actionPoint.x, actionPoint.y) == null) return false
+            groundLayer.setCell(actionPoint.x, actionPoint.y,null)
+            world.destroyBody(bodies[actionPoint])
+            grounds.remove(actionPoint)
+            player.addItem(Items.SOIL,1)
+            return false//shall use durability on ground
+        }
+        return false
+    }
+
+    fun placeGround(player: Player): Boolean {
+        val actionPoint = player.getActionPoint()
+        val empty = map.layers
+                .filter { it.name != "background" }
+                .all { it is TiledMapTileLayer && it.getCell(actionPoint.x, actionPoint.y) == null }
+        if (empty) {
+            initializeGround(actionPoint.x, actionPoint.y)
+            val groundLayer = map.layers["ground"] as TiledMapTileLayer
+            val cell = TiledMapTileLayer.Cell()
+            val tile = map.tileSets.getTile(10)
+            cell.tile = tile
+            groundLayer.setCell(actionPoint.x, actionPoint.y, cell)
             return true
         }
         return false
