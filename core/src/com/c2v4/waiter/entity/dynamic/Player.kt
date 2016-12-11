@@ -45,30 +45,52 @@ class Player {
                     currentItem--
                     if (currentItem < 0) currentItem = inventory.size - 1
                 }),
-                Mover(Input.Keys.X, { showInventory = !showInventory }),
+                Mover(Input.Keys.UP, {
+                    gameScene.shopPointer--
+                    if (gameScene.shopPointer < 0) gameScene.shopPointer = Items.values().size - 1
+                }),
+                Mover(Input.Keys.DOWN, {
+                    gameScene.shopPointer = (gameScene.shopPointer + 1) % Items.values().size
+                }),
+                Mover(Input.Keys.RIGHT, {
+                    val item = Items.values()[gameScene.shopPointer]
+                    addItem(item,1)
+                }),
+                Mover(Input.Keys.LEFT, {
+                    val item = Items.values()[gameScene.shopPointer]
+                    val itemInInventory = inventory.filter { it.type == item }.firstOrNull()
+                    if(itemInInventory!=null){
+                        removeItemFromInventory(itemInInventory)
+                    }
+                }),
+                Mover(Input.Keys.I, { showInventory = !showInventory }),
                 Mover(Input.Keys.P, { gameScene.showShop = !gameScene.showShop }),
-                Mover(Input.Keys.Z, {
+                Mover(Input.Keys.O, {
                     val item = inventory[currentItem]
                     if (item.type.action(gameScene)) {
-                        item.quantity--
-                        if (item.quantity<1){
-                            inventory.remove(item)
-                            if (currentItem>=inventory.size){
-                                currentItem--
-                            }
-                        }
+                        removeItemFromInventory(item)
                     }
                 }
                 )
         )
         moveListeners = arrayOf(
-                Mover(Input.Keys.UP, { body.applyForceToCenter(Vector2(0f, SPEED), true);direction = UP }),
-                Mover(Input.Keys.DOWN, { body.applyForceToCenter(Vector2(0f, -SPEED), true);direction = DOWN }),
-                Mover(Input.Keys.RIGHT, { body.applyForceToCenter(Vector2(SPEED, 0f), true);direction = RIGHT }),
-                Mover(Input.Keys.LEFT, { body.applyForceToCenter(Vector2(-SPEED, 0f), true);direction = LEFT })
+                Mover(Input.Keys.W, { body.applyForceToCenter(Vector2(0f, SPEED), true);direction = UP }),
+                Mover(Input.Keys.S, { body.applyForceToCenter(Vector2(0f, -SPEED), true);direction = DOWN }),
+                Mover(Input.Keys.D, { body.applyForceToCenter(Vector2(SPEED, 0f), true);direction = RIGHT }),
+                Mover(Input.Keys.A, { body.applyForceToCenter(Vector2(-SPEED, 0f), true);direction = LEFT })
         )
 
 
+    }
+
+    private fun removeItemFromInventory(item: Item) {
+        item.quantity--
+        if (item.quantity < 1) {
+            inventory.remove(item)
+            if (currentItem >= inventory.size) {
+                currentItem--
+            }
+        }
     }
 
     private fun createBody(world: World): Body {
@@ -135,5 +157,8 @@ enum class Items(val action: (GameScene) -> Boolean, val texture: Texture) {
     WATERING_CAN({ scene -> scene.water(scene.player) }, wateringCanTexture),
     HARVESTER({ scene -> scene.harvest(scene.player) }, harvesterTexture),
     MARY({ false }, maryTexture),
+    MARY2({ false }, maryTexture),
+    MARY3({ false }, maryTexture),
+    MARY4({ false }, maryTexture),
     PICKAXE({ scene -> scene.mine(scene.player)}, pickaxeTexture)
 }

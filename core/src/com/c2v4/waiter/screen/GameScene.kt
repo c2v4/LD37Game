@@ -2,12 +2,14 @@ package com.c2v4.waiter.screen
 
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Screen
+import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL30
 import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.Sprite
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer
 import com.c2v4.waiter.HEIGHT
 import com.c2v4.waiter.WIDTH
@@ -29,6 +31,7 @@ import java.util.*
 class GameScene : Screen {
     internal val batch = SpriteBatch()
     internal val camera = OrthographicCamera(WIDTH / PPM, HEIGHT / PPM)
+    val shapeRenderer = ShapeRenderer()
 
     internal var player: Player
 
@@ -110,18 +113,46 @@ class GameScene : Screen {
         renderPlants()
         renderShop()
         batch.end()
-        debugRenderer.render(world, camera.combined.cpy())
+//        debugRenderer.render(world, camera.combined.cpy())
     }
 
 
     private fun renderShop() {
-        val items = Items.values()
-        (shopPointer - 2..shopPointer + 2).map {
-            if (it < 0) {
+        if (showShop) {
+            val items = Items.values()
+            var selectedWidth = 104f
+            (shopPointer - 2..shopPointer + 2).map {
+                if (it < 0) {
+                    items.size + it
+                } else {
+                    if (it >= items.size) {
+                        (items.size + it) % items.size
+                    } else {
+                        it
+                    }
+                }
+            }.forEachIndexed { i, it ->
+                val sprite = Sprite(items[it].texture)
+                sprite.x = 480f
+                sprite.y = 600f - i * 70
+                sprite.setScale(2f)
+                sprite.draw(batch)
 
-            } else {
-                it
+                font.draw(batch, "${player.inventory
+                        .filter { iterator -> iterator.type == items[it] }
+                        .map(Item::quantity)
+                        .firstOrNull() ?: 0}", sprite.x, sprite.y + 20)
+                val draw = font.draw(batch, items[it].name.replace('_',' '), sprite.x, sprite.y)
+                if(i==2){
+                    selectedWidth= draw.width
+                }
             }
+
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Line)
+            shapeRenderer.color = Color.CYAN
+            shapeRenderer.rect(460f,440f,selectedWidth+26f,70f)
+            shapeRenderer.end()
+
         }
     }
 
