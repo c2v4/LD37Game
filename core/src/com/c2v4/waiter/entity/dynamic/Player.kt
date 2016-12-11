@@ -168,11 +168,12 @@ data class Item(
 
 enum class Items(val action: (GameScene) -> Boolean, val texture: Texture, val price: Float) {
     MARY_SEED({ scene -> scene.plant(scene.player) }, marySeedTexture, 1f),
-    WATERING_CAN({ scene -> scene.water(scene.player) }, wateringCanTexture, 0.3f),
-    HARVESTER({ scene -> scene.harvest(scene.player) }, harvesterTexture, 3f),
+    WATERING_CAN({ scene -> scene.water(scene.player) }, wateringCanTexture, 0.15f),
+    HARVESTER({ scene -> scene.harvest(scene.player) }, harvesterTexture, 1.5f),
     MARY({ false }, maryTexture, 9f),
     PICKAXE({ scene -> scene.mine(scene.player) }, pickaxeTexture, 14f),
-    SOIL({ scene -> scene.placeGround(scene.player) }, soilTexture, 14f);
+    SOIL({ scene -> scene.placeGround(scene.player) }, soilTexture, 14f),
+    LAMP({ scene -> scene.placeLamp(scene.player) }, lampTexture, 14f);
 
     fun getSellPrice(): Float = Math.round(price * 0.9 * 100) / 100f
     fun getBuyPrice(): Float = Math.round(price * 1.2 * 100) / 100f

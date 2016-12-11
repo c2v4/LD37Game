@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.Sprite
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
+import com.badlogic.gdx.maps.objects.EllipseMapObject
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer
 import com.c2v4.waiter.HEIGHT
 import com.c2v4.waiter.WIDTH
@@ -24,6 +25,8 @@ import com.c2v4.waiter.entity.dynamic.Items
 import com.c2v4.waiter.entity.static.Ground
 import com.c2v4.waiter.entity.static.plant.Mary
 import com.c2v4.waiter.helper.*
+import java.lang.Math.abs
+import java.lang.Math.round
 import java.time.Year
 import java.time.temporal.Temporal
 import java.util.*
@@ -47,6 +50,7 @@ class GameScene : Screen {
 
     val grounds = mutableMapOf<Point2D, Ground>()
     val bodies = mutableMapOf<Point2D, Body>()
+    val lamps = mutableMapOf<Point2D, Sprite>()
     private val random = Random()
 
     constructor() {
@@ -60,6 +64,13 @@ class GameScene : Screen {
         val ground = map.layers.get("ground") as TiledMapTileLayer
         val walls = map.layers.get("wall") as TiledMapTileLayer
         val invisibleWalls = map.layers.get("invisible-wall") as TiledMapTileLayer
+        val lampLayer = map.layers["lamp"]
+        lampLayer.objects.filter { it is EllipseMapObject }.forEach {
+            val ellipseMapObject = it as EllipseMapObject
+            val point2D = Point2D(round(ellipseMapObject.ellipse.x / 32), round(ellipseMapObject.ellipse.y / 32))
+            placeLampAt(point2D)
+        }
+        map.layers.remove(lampLayer)
         (0..ground.width)
                 .forEach { x ->
                     (0..ground.height)
@@ -76,6 +87,13 @@ class GameScene : Screen {
                             }
                 }
 
+    }
+
+    private fun placeLampAt(point2D: Point2D) {
+        val sprite = Sprite(lampTexture)
+        sprite.x = point2D.x * 32f
+        sprite.y = point2D.y * 32f
+        lamps.put(point2D, sprite)
     }
 
     private fun initializeGround(x: Int, y: Int) {
@@ -109,12 +127,19 @@ class GameScene : Screen {
         tiledMapRenderer.setView(camera)
         tiledMapRenderer.render()
         batch.begin()
+        renderLamps()
         player.sprite.draw(batch)
-        renderInventory()
         renderPlants()
+        renderInventory()
         renderShop()
         batch.end()
 //        debugRenderer.render(world, camera.combined.cpy())
+    }
+
+    private fun renderLamps() {
+        lamps.values.forEach {
+            it.draw(batch)
+        }
     }
 
 
@@ -193,10 +218,15 @@ class GameScene : Screen {
     private fun update(delta: Float) {
         world.step(1f / 30, 6, 2)
         player.update()
-        grounds.values.forEach {
-            val chance = random.nextInt(10)
-            it.grow(chance)
+        grounds.values.filter { it.plant != null }.forEach {
+            it.grow(getGrowValue(Point2D(it.x, it.y)))
         }
+    }
+
+    private fun getGrowValue(point2D: Point2D): Int {
+        val sum = lamps.keys.map { 2 * (5 - (abs(it.x - point2D.x) + abs(it.y - point2D.y))) }.filter { it > 0 }.sum()
+        val chance = random.nextInt(sum + 1)
+        return chance
     }
 
     override fun pause() {
@@ -278,11 +308,17 @@ class GameScene : Screen {
             return true
         } else {
             val groundLayer = map.layers.get("ground") as TiledMapTileLayer
-            if (groundLayer.getCell(actionPoint.x, actionPoint.y) == null) return false
-            groundLayer.setCell(actionPoint.x, actionPoint.y,null)
+            if (groundLayer.getCell(actionPoint.x, actionPoint.y) == null) {
+                val lampPosition = lamps.keys.firstOrNull { it == actionPoint }
+                if (lampPosition != null) {
+                    lamps.remove(lampPosition)
+                }
+                return false
+            }
+            groundLayer.setCell(actionPoint.x, actionPoint.y, null)
             world.destroyBody(bodies[actionPoint])
             grounds.remove(actionPoint)
-            player.addItem(Items.SOIL,1)
+            player.addItem(Items.SOIL, 1)
             return false//shall use durability on ground
         }
         return false
@@ -290,9 +326,10 @@ class GameScene : Screen {
 
     fun placeGround(player: Player): Boolean {
         val actionPoint = player.getActionPoint()
-        val empty = map.layers
+        var empty = map.layers
                 .filter { it.name != "background" }
                 .all { it is TiledMapTileLayer && it.getCell(actionPoint.x, actionPoint.y) == null }
+        empty = empty and lamps.keys.none { it == actionPoint }
         if (empty) {
             initializeGround(actionPoint.x, actionPoint.y)
             val groundLayer = map.layers["ground"] as TiledMapTileLayer
@@ -300,6 +337,19 @@ class GameScene : Screen {
             val tile = map.tileSets.getTile(10)
             cell.tile = tile
             groundLayer.setCell(actionPoint.x, actionPoint.y, cell)
+            return true
+        }
+        return false
+    }
+
+    fun placeLamp(player: Player): Boolean {
+        val actionPoint = player.getActionPoint()
+        var empty = map.layers
+                .filter { it.name != "background" }
+                .all { it is TiledMapTileLayer && it.getCell(actionPoint.x, actionPoint.y) == null }
+        empty = empty and lamps.keys.none { it == actionPoint }
+        if (empty) {
+            placeLampAt(Point2D(actionPoint.x, actionPoint.y))
             return true
         }
         return false

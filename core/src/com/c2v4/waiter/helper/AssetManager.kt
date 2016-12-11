@@ -18,6 +18,7 @@ val harvesterTexture = Texture("items/harvester.png")
 val maryTexture = Texture("items/mary.png")
 val pickaxeTexture = Texture("items/pickaxe.png")
 val soilTexture = Texture("items/soil.png")
+val lampTexture = Texture("items/lamp.png")
 
 class AssetManager {
 }
