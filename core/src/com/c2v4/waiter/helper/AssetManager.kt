@@ -10,6 +10,9 @@ val marryTextures = listOf(
         Texture("entities/plant/mary/5.png"),
         Texture("entities/plant/mary/6.png")
         )
+
+val playerBaseTexture=Texture("entities/player/base/base.png")
+
 val emptyTexture = Texture("entities/plant/empty.png")
 val wateringCanTexture = Texture("items/watering-can.png")
 val marySeedTexture = Texture("items/mary-seed.png")

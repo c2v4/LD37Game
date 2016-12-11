@@ -112,7 +112,7 @@ class GameScene : Screen {
         bodyDef.position.y = 32 / PPM * y + 16 / PPM
         val createdBody = world.createBody(bodyDef)
         createdBody.createFixture(fixtureDef)
-        bodies.put(Point2D(x, y), createdBody)
+//        bodies.put(Point2D(x, y), createdBody)
     }
 
     override fun show() {
@@ -128,7 +128,7 @@ class GameScene : Screen {
         tiledMapRenderer.render()
         batch.begin()
         renderLamps()
-        player.sprite.draw(batch)
+        player.draw(batch)
         renderPlants()
         renderInventory()
         renderShop()
@@ -217,7 +217,7 @@ class GameScene : Screen {
 
     private fun update(delta: Float) {
         world.step(1f / 30, 6, 2)
-        player.update()
+        player.update(delta)
         grounds.values.filter { it.plant != null }.forEach {
             it.grow(getGrowValue(Point2D(it.x, it.y)))
         }

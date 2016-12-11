@@ -4,18 +4,23 @@ package com.c2v4.waiter.entity.dynamic
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Texture
+import com.badlogic.gdx.graphics.g2d.Animation
 import com.badlogic.gdx.graphics.g2d.Sprite
+import com.badlogic.gdx.graphics.g2d.SpriteBatch
+import com.badlogic.gdx.graphics.g2d.TextureRegion
+import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.physics.box2d.*
 import com.c2v4.waiter.entity.dynamic.Items.*
 import com.c2v4.waiter.helper.*
 import com.c2v4.waiter.helper.Direction.*
 import com.c2v4.waiter.screen.GameScene
+import javafx.scene.transform.Rotate
 
 class Player {
     val startingX = 16
     val startingY = 2
-    val SPEED = 2f
+    val SPEED = 0.25f
     val sprite = Sprite(Texture("entities/player.png"))
     val body: Body
     val gameScene: GameScene
@@ -26,10 +31,19 @@ class Player {
     var currentItem = 0
     var showInventory = true
     var money = 10f
+    var moved = false
+    val baseAnimation: Animation
+    var baseAnimationCounter = 0f
+    var x = 0f
+    var y = 0f
 //    val maxInventoryItems = 10
+
+    private val baseFrameLength = 0.015f
 
     constructor(world: World, gameScene: GameScene) {
         this.gameScene = gameScene
+        baseAnimation = Animation(baseFrameLength, getBaseFrames())
+
         body = createBody(world)
         inventory = mutableListOf(
                 Item(5, MARY_SEED),
@@ -85,24 +99,30 @@ class Player {
                         removeItemFromInventory(item)
                     }
                 }),
-                Mover(Input.Keys.F7, { money+=1000 })
+                Mover(Input.Keys.F7, { money += 1000 })
         )
         moveListeners = arrayOf(
-                Mover(Input.Keys.UP, { body.applyForceToCenter(Vector2(0f, SPEED), true);direction = UP }),
-                Mover(Input.Keys.DOWN, { body.applyForceToCenter(Vector2(0f, -SPEED), true);direction = DOWN }),
-                Mover(Input.Keys.RIGHT, { body.applyForceToCenter(Vector2(SPEED, 0f), true);direction = RIGHT }),
-                Mover(Input.Keys.LEFT, { body.applyForceToCenter(Vector2(-SPEED, 0f), true);direction = LEFT }),
+                Mover(Input.Keys.UP, { body.applyLinearImpulse(Vector2(0f, SPEED), Vector2(0f, 0f), true);direction = UP; moved = true }),
+                Mover(Input.Keys.DOWN, { body.applyLinearImpulse(Vector2(0f, -SPEED), Vector2(0f, 0f), true);direction = DOWN;moved = true }),
+                Mover(Input.Keys.RIGHT, { body.applyLinearImpulse(Vector2(SPEED, 0f), Vector2(0f, 0f), true);direction = RIGHT;moved = true }),
+                Mover(Input.Keys.LEFT, { body.applyLinearImpulse(Vector2(-SPEED, 0f), Vector2(0f, 0f), true);direction = LEFT;moved = true }),
                 Mover(Input.Keys.Z, {
                     val item = inventory[currentItem]
-                    if(arrayOf(MARY_SEED,HARVESTER).contains(item.type))
-                    if (item.type.action(gameScene)) {
-                        removeItemFromInventory(item)
-                    }
+                    if (arrayOf(MARY_SEED, HARVESTER).contains(item.type))
+                        if (item.type.action(gameScene)) {
+                            removeItemFromInventory(item)
+                        }
                 })
         )
-
-
     }
+
+    private fun getBaseFrames(): com.badlogic.gdx.utils.Array<out TextureRegion>? {
+        val array = com.badlogic.gdx.utils.Array<TextureRegion>(30)
+        val arrayOfTextureRegions = TextureRegion.split(playerBaseTexture, 32, 32).get(0)
+        arrayOfTextureRegions.forEach { textureRegion -> array.add(textureRegion) }
+        return array
+    }
+
 
     private fun removeItemFromInventory(item: Item) {
         item.quantity--
@@ -124,22 +144,31 @@ class Player {
         fixtureDef.density = 1f
         val bodyDef = BodyDef()
         bodyDef.type = BodyDef.BodyType.DynamicBody
-        bodyDef.linearDamping = 5f
+        bodyDef.linearDamping = 10f
         bodyDef.fixedRotation = true
         val localBody = world.createBody(bodyDef)
         localBody.createFixture(fixtureDef)
         return localBody
     }
 
-    fun update() {
+    fun update(delta: Float) {
+        body.setLinearVelocity(0f, 0f)
+        moved = false
+        baseAnimation.animationDuration
         moveListeners.filter {
             Gdx.input.isKeyPressed(it.keyCode)
         }.forEach { it.action() }
         instantListeners.filter {
             Gdx.input.isKeyJustPressed(it.keyCode)
         }.forEach { it.action() }
-        sprite.x = body.position.x * PPM + 32 * startingX
-        sprite.y = body.position.y * PPM + 32 * startingY + 32
+        if (moved) {
+            baseAnimationCounter += delta
+            baseAnimationCounter %= baseAnimation.animationDuration
+        } else {
+            baseAnimationCounter = 6 * baseFrameLength
+        }
+        x = body.position.x * PPM + 32 * startingX
+        y = body.position.y * PPM + 32 * startingY + 32
     }
 
     fun getActionPoint(): Point2D {
@@ -161,6 +190,22 @@ class Player {
         } else {
             item.quantity += quantity
         }
+    }
+
+    fun draw(batch: SpriteBatch) {
+        val rotate: Float
+        if (moved) {
+            val velocityFromLocalPoint = body.linearVelocity
+            rotate = MathUtils.atan2(velocityFromLocalPoint.y, velocityFromLocalPoint.x) * MathUtils.radiansToDegrees
+        } else {
+            when(direction){
+                UP->rotate = 270f
+                RIGHT->rotate = 0f
+                DOWN->rotate = 90f
+                LEFT->rotate = 180f
+            }
+        }
+        batch.draw(baseAnimation.getKeyFrame(baseAnimationCounter), x, y, 16f, 16f, 32f, 32f, 1.5f, 1.5f, rotate, true)
     }
 }
 
