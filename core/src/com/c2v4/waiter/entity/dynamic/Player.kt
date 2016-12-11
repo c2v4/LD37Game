@@ -163,6 +163,12 @@ class Player {
         y = body.position.y * PPM + 32 * startingY + 32
     }
 
+    fun getPoint(): Point2D {
+        var x = Math.round(x / 32)
+        var y = Math.round(y / 32)
+        return Point2D(x, y)
+    }
+
     fun getActionPoint(): Point2D {
         var x = Math.round(x / 32)
         var y = Math.round(y / 32)
