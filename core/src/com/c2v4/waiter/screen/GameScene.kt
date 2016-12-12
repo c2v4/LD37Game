@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.g2d.BitmapFont
 import com.badlogic.gdx.graphics.g2d.Sprite
 import com.badlogic.gdx.graphics.g2d.SpriteBatch
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.maps.objects.EllipseMapObject
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer
@@ -18,13 +19,13 @@ import com.badlogic.gdx.maps.tiled.TmxMapLoader
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.physics.box2d.*
+import com.badlogic.gdx.utils.Align
 import com.c2v4.waiter.entity.dynamic.Item
 import com.c2v4.waiter.entity.dynamic.Items
 import com.c2v4.waiter.entity.dynamic.Policeman
 import com.c2v4.waiter.entity.static.Ground
 import com.c2v4.waiter.entity.static.plant.Mary
 import com.c2v4.waiter.helper.*
-import com.sun.org.apache.xpath.internal.operations.Bool
 import java.lang.Math.abs
 import java.lang.Math.round
 import java.util.*
@@ -45,19 +46,37 @@ class GameScene : Screen {
     val world = World(Vector2(0f, 0f), false)
     var debugRenderer: Box2DDebugRenderer = Box2DDebugRenderer()
     val font = BitmapFont()
+    val ripFont: BitmapFont
+    val winFont: BitmapFont
 
     val grounds = mutableMapOf<Point2D, Ground>()
     val bodies = mutableMapOf<Point2D, Body>()
     val lamps = mutableMapOf<Point2D, Sprite>()
     val police = mutableListOf<Policeman>()
     private val random = Random()
+    var showRip = false
+    var showWin = false
+    var time =0f
+    var tillNextStrike = 4*60f
+    var playedWin=false
+    var playedRip=false
+
 
     constructor() {
         Box2D.init()
         player = Player(world, this)
         camera.translate(Gdx.graphics.width / 2 / PPM, Gdx.graphics.height / 2 / PPM)
         initializeMap()
-        police.add(Policeman(world, this))
+        world.setContactListener(MyContactListener())
+        var generator = FreeTypeFontGenerator(ripFontFile)
+        val parameter = FreeTypeFontGenerator.FreeTypeFontParameter()
+        parameter.size = 600
+        ripFont = generator.generateFont(parameter)
+        generator.dispose()
+        generator = FreeTypeFontGenerator(winFontFile)
+        winFont = generator.generateFont(parameter)
+        generator.dispose()
+
     }
 
     private fun initializeMap() {
@@ -123,17 +142,45 @@ class GameScene : Screen {
         Gdx.gl.glClear(GL30.GL_COLOR_BUFFER_BIT)
         update(delta)
         camera.update()
-        tiledMapRenderer.setView(camera)
-        tiledMapRenderer.render()
-        batch.begin()
-        renderLamps()
-        player.draw(batch)
-        renderPolice()
-        renderPlants()
-        renderInventory()
-        renderShop()
+        if (!showWin && !showRip) {
+            tiledMapRenderer.setView(camera)
+            tiledMapRenderer.render()
+            batch.begin()
+            renderLamps()
+            player.draw(batch)
+            renderPolice()
+            renderPlants()
+            renderInventory()
+            renderShop()
+        }
+        if (showRip && !showWin) {
+            batch.begin()
+            renderRip()
+        }
+        if (showWin) {
+            batch.begin()
+            renderWin()
+        }
         batch.end()
 //        debugRenderer.render(world, camera.combined.cpy())
+    }
+
+    private fun renderRip() {
+        ripFont.color = Color.RED
+        ripFont.draw(batch, "RIP", 200f, 800f, 600f, Align.bottomLeft, false)
+        if(!playedRip){
+            playedRip=true
+            ripSound.play()
+        }
+    }
+
+    private fun renderWin() {
+        winFont.color = Color.GREEN
+        winFont.draw(batch, "WIN", 100f, 700f, 600f, Align.bottomLeft, false)
+        if(!playedWin){
+            playedWin=true
+            winSound.play()
+        }
     }
 
     private fun renderPolice() {
@@ -149,9 +196,10 @@ class GameScene : Screen {
 
     private fun renderShop() {
         if (showShop) {
+            val offset = -400f
             val items = Items.values()
             var selectedWidth = 104f
-            font.draw(batch, String.format("%1$.2f", player.money), 960f, 744f)
+            font.draw(batch, String.format("Money: %1$.2f", player.money), 850f, 744f)
             (shopPointer - 2..shopPointer + 2).map {
                 if (it < 0) {
                     items.size + it
@@ -164,7 +212,7 @@ class GameScene : Screen {
                 }
             }.forEachIndexed { i, it ->
                 val sprite = Sprite(items[it].texture)
-                sprite.x = 480f
+                sprite.x = 480f - offset
                 sprite.y = 600f - i * 70
                 sprite.setScale(2f)
                 sprite.draw(batch)
@@ -172,14 +220,14 @@ class GameScene : Screen {
                 font.draw(batch, "${player.inventory
                         .filter { iterator -> iterator.type == items[it] }
                         .map(Item::quantity)
-                        .firstOrNull() ?: 0}", sprite.x - 20, sprite.y + 20)
+                        .firstOrNull() ?: 0}", sprite.x - 20 , sprite.y + 20)
                 font.color = Color.LIME
-                font.draw(batch, "${items[it].getBuyPrice()}", sprite.x - 20, sprite.y + 40)
+                font.draw(batch, "${items[it].getBuyPrice()}", sprite.x - 20 , sprite.y + 40)
                 font.color = Color.SCARLET
-                font.draw(batch, "${items[it].getSellPrice()}", sprite.x + 20, sprite.y + 40)
+                font.draw(batch, "${items[it].getSellPrice()}", sprite.x + 20 , sprite.y + 40)
 
                 font.color = Color.WHITE
-                val draw = font.draw(batch, items[it].name.replace('_', ' '), sprite.x - 20, sprite.y)
+                val draw = font.draw(batch, items[it].name.replace('_', ' '), sprite.x - 20 , sprite.y)
                 if (i == 2) {
                     selectedWidth = draw.width
                 }
@@ -190,11 +238,10 @@ class GameScene : Screen {
             val widthWithSomething: Float
             if ((selectedWidth + 24f) < 76f) {
                 widthWithSomething = 76f
-            }
-            else {
+            } else {
                 widthWithSomething = selectedWidth + 24f
             }
-            shapeRenderer.rect(454f, 440f, widthWithSomething, 70f)
+            shapeRenderer.rect(454f-offset, 440f, widthWithSomething, 70f)
             shapeRenderer.end()
 
         }
@@ -233,6 +280,24 @@ class GameScene : Screen {
         grounds.values.filter { it.plant != null }.forEach {
             it.grow(getGrowValue(Point2D(it.x, it.y)))
         }
+        showWin = player.money > 999.99
+        time+=delta
+        policeAssault()
+    }
+
+    private fun policeAssault(): Unit {
+        if(time>tillNextStrike){
+            time=0f
+            addPoliceman()
+            tillNextStrike= rollNextStrike()
+        }
+    }
+
+    private fun rollNextStrike(): Float {
+        val fourMin = 60f*4
+        var chance = fourMin - random.nextInt(grounds.size * 10)
+        if(chance<30f) chance= 30f
+        return chance
     }
 
     private fun getGrowValue(point2D: Point2D): Int {
@@ -261,6 +326,7 @@ class GameScene : Screen {
         val ground = grounds[player.getActionPoint()]
         if (ground != null && ground.plant == null) {
             ground.plant = Mary()
+            plantSound.play()
             return true
         }
         return false
@@ -270,6 +336,7 @@ class GameScene : Screen {
         val ground = grounds.get(player.getActionPoint())
         if (ground != null && ground.plant != null) {
             ground.water()
+            waterSound.play()
             return true
         }
         return false
@@ -282,6 +349,7 @@ class GameScene : Screen {
         if (ground != null && ground.plant != null && fullGrown != null && fullGrown) {
             ground.plant = null
             player.addItem(Items.MARY, 1)
+            harvestSound.play()
             return true
         }
         return false
@@ -303,7 +371,7 @@ class GameScene : Screen {
             bodies.remove(actionPoint)
             val wallCell = TiledMapTileLayer.Cell()
             wallCell.tile = map.tileSets.getTile(12)
-
+            mineSound.play()
             (actionPoint.x - 1..actionPoint.x + 1).filter { it >= 0 && it < walls.width }.forEach { x ->
                 run {
                     (actionPoint.y - 1..actionPoint.y + 1).filter { it >= 0 && it < walls.width }.filter { y ->
@@ -324,6 +392,8 @@ class GameScene : Screen {
                 val lampPosition = lamps.keys.firstOrNull { it == actionPoint }
                 if (lampPosition != null) {
                     lamps.remove(lampPosition)
+                    player.addItem(Items.LAMP, 1)
+                    mineSound.play()
                 }
                 return false
             }
@@ -332,6 +402,7 @@ class GameScene : Screen {
             bodies.remove(actionPoint)
             grounds.remove(actionPoint)
             player.addItem(Items.SOIL, 1)
+            mineSound.play()
             return false//shall use durability on ground
         }
     }
@@ -342,7 +413,12 @@ class GameScene : Screen {
                 .filter { it.name != "background" }
                 .all { it is TiledMapTileLayer && it.getCell(actionPoint.x, actionPoint.y) == null }
         empty = empty and lamps.keys.none { it == actionPoint }
-        empty = empty and police.none { it.aStar.contains(actionPoint) }
+        empty = empty and (actionPoint != Point2D(16, 1))
+        empty = empty and police.none { it.aStar.contains(actionPoint) || it.getPoint() == actionPoint }
+        val blockersCopy = bodies.keys.toMutableSet()
+        blockersCopy.add(actionPoint)
+        val aStar = aStar(Point2D(16, 1), player.getPoint(), blockersCopy)
+        empty = empty and aStar.isNotEmpty()
         if (empty) {
             initializeGround(actionPoint.x, actionPoint.y)
             val groundLayer = map.layers["ground"] as TiledMapTileLayer
@@ -350,6 +426,8 @@ class GameScene : Screen {
             val tile = map.tileSets.getTile(10)
             cell.tile = tile
             groundLayer.setCell(actionPoint.x, actionPoint.y, cell)
+            tillNextStrike = rollNextStrike()
+            placeSound.play()
             return true
         }
         return false
@@ -363,6 +441,7 @@ class GameScene : Screen {
         empty = empty and lamps.keys.none { it == actionPoint }
         if (empty) {
             placeLampAt(Point2D(actionPoint.x, actionPoint.y))
+            placeSound.play()
             return true
         }
         return false
@@ -371,7 +450,36 @@ class GameScene : Screen {
     fun shoot(player: Player): Boolean {
         val bullet = player.inventory.filter { it.type == Items.BULLET }.firstOrNull()
         if (bullet != null && bullet.quantity > 0) {
-
+            player.removeItemFromInventory(bullet)
+            shotSound.play()
+            val playerPoint = player.getPoint()
+            var (x, y) = player.getActionPoint()
+            for (i in 0..20) {
+                val currentPoint = Point2D(x, y)
+                val policeman = police.filter { it.getPoint() == currentPoint }.firstOrNull()
+                if (policeman != null) {
+                    policeman.die()
+                    police.remove(policeman)
+                    return false
+                }
+                bodies.keys.filter { it == currentPoint }.forEach {
+                    return false
+                }
+                if (playerPoint.x > x) {
+                    x--
+                } else {
+                    if (playerPoint.x < x) {
+                        x++
+                    }
+                }
+                if (playerPoint.y > y) {
+                    y--
+                } else {
+                    if (playerPoint.y < y) {
+                        y++
+                    }
+                }
+            }
         }
         return false
     }
@@ -379,6 +487,11 @@ class GameScene : Screen {
     private fun getWall(actionPoint: Point2D): TiledMapTileLayer.Cell? {
         val walls = map.layers.get("wall") as TiledMapTileLayer
         return walls.getCell(actionPoint.x, actionPoint.y)
+    }
+
+    fun addPoliceman() {
+        addPoliceSound.play()
+        police.add(Policeman(world, this))
     }
 
 

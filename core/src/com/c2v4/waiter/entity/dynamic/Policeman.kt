@@ -9,11 +9,12 @@ import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.physics.box2d.*
 import com.c2v4.waiter.helper.*
 import com.c2v4.waiter.screen.GameScene
+import javax.print.attribute.standard.Destination
 
 class Policeman {
     val SPEED = 0.15f
     val startingX = 16
-    val startingY = 3
+    val startingY = 0
     val gameScene: GameScene
     val baseAnimation: Animation
     val top: TextureRegion
@@ -24,9 +25,11 @@ class Policeman {
     var y = 0f
     var moved = false
     var aStar:List<Point2D> = listOf()
+    var world:World
     var direction: Direction = Direction.UP
 
     constructor(world: World, gameScene: GameScene) {
+        this.world = world
         this.gameScene = gameScene
         baseAnimation = Animation(baseFrameLength, getBaseFrames())
         top = TextureRegion.split(policemanTopTexture, 32, 32)[0][0]
@@ -46,6 +49,7 @@ class Policeman {
         bodyDef.fixedRotation = true
         val localBody = world.createBody(bodyDef)
         localBody.createFixture(fixtureDef)
+        localBody.userData=this
         return localBody
     }
 
@@ -54,7 +58,12 @@ class Policeman {
         x = body.position.x * PPM + 32 * startingX
         y = body.position.y * PPM + 32 * startingY + 32
         moved = false
-        aStar = aStar()
+        val policeX = Math.round((x) / 32)
+        val policeY = Math.round((y) / 32)
+        val playerX = Math.round((gameScene.player.x) / 32)
+        val playerY = Math.round((gameScene.player.y) / 32)
+        val playerPoint = Point2D(playerX,playerY)
+        aStar = aStar(getPoint(),playerPoint,gameScene.bodies.keys)
         move()
         baseAnimation.animationDuration
         if (moved) {
@@ -67,8 +76,6 @@ class Policeman {
 
     private fun move(): Unit {
         if (aStar.isNotEmpty()){
-//            val policeX = Math.round((x) / 32)
-//            val policeY = Math.round((y) / 32)
             val xdiff = aStar[0].x*32-x
             val ydiff = aStar[0].y*32-y
             if(xdiff>0){
@@ -106,41 +113,13 @@ class Policeman {
         batch.draw(top, x, y, 16f, 16f, 32f, 32f, 1.5f, 1.5f, rotateTop + 180, true)
     }
 
-    fun aStar(): List<Point2D> {
-        val policeX = Math.round((x) / 32)
-        val policeY = Math.round((y) / 32)
-        val playerX = Math.round((gameScene.player.x) / 32)
-        val playerY = Math.round((gameScene.player.y) / 32)
-        val playerPoint = Point2D(playerX,playerY)
-        val closedSet = mutableSetOf<Point2D>()
-        val openSet = mutableMapOf<Point2D, MutableList<Point2D>>()
-        openSet.put(Point2D(policeX, policeY), mutableListOf<Point2D>())
-        while (openSet.isNotEmpty()) {
-            for ((x1, y1) in openSet.keys.toSet()) {
-                val point2D = Point2D(x1, y1)
-                val currentPath: MutableList<Point2D> = openSet[point2D] ?: mutableListOf()
-                if (openSet.containsKey(point2D)) {
-                    openSet.remove(point2D)
-                }
-                for (i in -1..1) {
-                    for (j in -1..1) {
-                        if (i == 0 && j == 0) continue
-                        val currentPoint = Point2D(x1 + i, y1 + j)
-                        if (gameScene.bodies.keys.contains(currentPoint) or
-                                closedSet.contains(currentPoint) or
-                                openSet.contains(currentPoint)) continue
-                        val list = currentPath.toMutableList()
-                        list.add(currentPoint)
-                        if(currentPoint==playerPoint){
-                            return list
-                        }
-                        openSet.put(currentPoint, list)
-                    }
-                }
-                closedSet.add(point2D)
-            }
-        }
-        return listOf()
+    fun getPoint(): Point2D {
+        return Point2D(Math.round((x) / 32),Math.round((y) / 32))
     }
+
+    fun die() {
+        world.destroyBody(body)
+    }
+
 
 }

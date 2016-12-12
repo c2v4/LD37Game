@@ -1,5 +1,6 @@
 package com.c2v4.waiter.helper
 
+import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 
@@ -11,6 +12,20 @@ val marryTextures = listOf(
         Texture("entities/plant/mary/5.png"),
         Texture("entities/plant/mary/6.png")
 )
+val addPoliceSound = Gdx.audio.newSound(Gdx.files.internal("sounds/addpolice.wav"))
+val harvestSound = Gdx.audio.newSound(Gdx.files.internal("sounds/harvest.wav"))
+val mineSound = Gdx.audio.newSound(Gdx.files.internal("sounds/mine.wav"))
+val placeSound = Gdx.audio.newSound(Gdx.files.internal("sounds/place.wav"))
+val plantSound = Gdx.audio.newSound(Gdx.files.internal("sounds/plant.wav"))
+val ripSound = Gdx.audio.newSound(Gdx.files.internal("sounds/rip.wav"))
+val shotSound = Gdx.audio.newSound(Gdx.files.internal("sounds/shot.wav"))
+val waterSound = Gdx.audio.newSound(Gdx.files.internal("sounds/water.wav"))
+val winSound = Gdx.audio.newSound(Gdx.files.internal("sounds/win.wav"))
+val buySound = Gdx.audio.newSound(Gdx.files.internal("sounds/buy.wav"))
+
+
+val ripFontFile = Gdx.files.internal("ilits.ttf")
+val winFontFile = Gdx.files.internal("win.ttf")
 
 val playerBaseTexture = Texture("entities/player/base/base.png")
 val playerTopTexture = Texture("entities/player/base/top.png")

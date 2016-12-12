@@ -33,7 +33,7 @@ class Player {
     var moved = false
     val baseAnimation: Animation
     var baseAnimationCounter = 0f
-    val top:TextureRegion
+    val top: TextureRegion
     var x = 0f
     var y = 0f
 //    val maxInventoryItems = 10
@@ -43,7 +43,7 @@ class Player {
     constructor(world: World, gameScene: GameScene) {
         this.gameScene = gameScene
         baseAnimation = Animation(baseFrameLength, getBaseFrames())
-        top = TextureRegion.split(playerTopTexture,32,32)[0][0]
+        top = TextureRegion.split(playerTopTexture, 32, 32)[0][0]
         body = createBody(world)
         inventory = mutableListOf(
                 Item(5, MARY_SEED),
@@ -55,6 +55,9 @@ class Player {
                     if (inventory.size > 0) {
                         currentItem = (currentItem + 1) % inventory.size
                     }
+                }),
+                Mover(Input.Keys.F8, {
+                    gameScene.addPoliceman()
                 }),
                 Mover(Input.Keys.LEFT_BRACKET, {
                     currentItem--
@@ -77,6 +80,7 @@ class Player {
                         val item = Items.values()[gameScene.shopPointer]
                         if (money >= item.getBuyPrice()) {
                             addItem(item, 1)
+                            buySound.play()
                             money -= item.getBuyPrice()
                         }
                     }
@@ -88,6 +92,7 @@ class Player {
                         if (itemInInventory != null) {
                             removeItemFromInventory(itemInInventory)
                             money += item.getSellPrice()
+                            buySound.play()
                         }
                     }
                 }),
@@ -99,7 +104,7 @@ class Player {
                         removeItemFromInventory(item)
                     }
                 }),
-                Mover(Input.Keys.F7, { money += 1000 })
+                Mover(Input.Keys.F7, { money += 100 })
         )
         moveListeners = arrayOf(
                 Mover(Input.Keys.UP, { body.applyLinearImpulse(Vector2(0f, SPEED), Vector2(0f, 0f), true);direction = UP; moved = true }),
@@ -116,7 +121,7 @@ class Player {
         )
     }
 
-    private fun removeItemFromInventory(item: Item) {
+    fun removeItemFromInventory(item: Item) {
         item.quantity--
         if (item.quantity < 1) {
             inventory.remove(item)
@@ -140,19 +145,26 @@ class Player {
         bodyDef.fixedRotation = true
         val localBody = world.createBody(bodyDef)
         localBody.createFixture(fixtureDef)
+        localBody.userData = this
         return localBody
+    }
+
+    fun rip() {
+        gameScene.showRip = true
     }
 
     fun update(delta: Float) {
         body.setLinearVelocity(0f, 0f)
         moved = false
         baseAnimation.animationDuration
-        moveListeners.filter {
-            Gdx.input.isKeyPressed(it.keyCode)
-        }.forEach { it.action() }
-        instantListeners.filter {
-            Gdx.input.isKeyJustPressed(it.keyCode)
-        }.forEach { it.action() }
+        if (!gameScene.showRip && !gameScene.showWin) {
+            moveListeners.filter {
+                Gdx.input.isKeyPressed(it.keyCode)
+            }.forEach { it.action() }
+            instantListeners.filter {
+                Gdx.input.isKeyJustPressed(it.keyCode)
+            }.forEach { it.action() }
+        }
         if (moved) {
             baseAnimationCounter += delta
             baseAnimationCounter %= baseAnimation.animationDuration
@@ -196,16 +208,16 @@ class Player {
             val velocityFromLocalPoint = body.linearVelocity
             rotate = MathUtils.atan2(velocityFromLocalPoint.y, velocityFromLocalPoint.x) * MathUtils.radiansToDegrees
         } else {
-            when(direction){
-                UP->rotate = 270f
-                RIGHT->rotate = 0f
-                DOWN->rotate = 90f
-                LEFT->rotate = 180f
+            when (direction) {
+                UP -> rotate = 270f
+                RIGHT -> rotate = 0f
+                DOWN -> rotate = 90f
+                LEFT -> rotate = 180f
             }
         }
-        val rotateTop = MathUtils.atan2(y+16-(Gdx.graphics.height-Gdx.input.y),x+16-Gdx.input.x)*MathUtils.radiansToDegrees
+//        val rotateTop = MathUtils.atan2(y+16-(Gdx.graphics.height-Gdx.input.y),x+16-Gdx.input.x)*MathUtils.radiansToDegrees
         batch.draw(baseAnimation.getKeyFrame(baseAnimationCounter), x, y, 16f, 16f, 32f, 32f, 1.5f, 1.5f, rotate, true)
-        batch.draw(top, x, y, 16f, 16f, 32f, 32f, 1.5f, 1.5f, rotateTop+180, true)
+        batch.draw(top, x, y, 16f, 16f, 32f, 32f, 1.5f, 1.5f, rotate, true)
     }
 }
 
@@ -227,8 +239,8 @@ enum class Items(val action: (GameScene) -> Boolean, val texture: Texture, val p
     PICKAXE({ scene -> scene.mine(scene.player) }, pickaxeTexture, 14f),
     SOIL({ scene -> scene.placeGround(scene.player) }, soilTexture, 14f),
     LAMP({ scene -> scene.placeLamp(scene.player) }, lampTexture, 14f),
-    GUN({false }, gunTexture, 14f),
-    BULLET({scene -> scene.shoot(scene.player)}, bulletTexture, 14f);
+    GUN({ scene -> scene.shoot(scene.player) }, gunTexture, 14f),
+    BULLET({ false }, bulletTexture, 3f);
 
     fun getSellPrice(): Float = Math.round(price * 0.9 * 100) / 100f
     fun getBuyPrice(): Float = Math.round(price * 1.2 * 100) / 100f
